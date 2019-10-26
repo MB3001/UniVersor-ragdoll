@@ -1,2 +1,2 @@
-# UniVersor-ragdoll
+# UniVersor ragdoll
 Ragdoll for UniVersor game
