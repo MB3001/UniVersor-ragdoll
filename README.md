@@ -1,2 +1,2 @@
 # UniVersor ragdoll
-Destructible ragdoll for UniVersor game
+Destructible ragdoll for UniVersor game.
