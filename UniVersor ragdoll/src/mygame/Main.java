@@ -4,6 +4,10 @@ import com.jme3.app.SimpleApplication;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.control.RigidBodyControl;
 import com.jme3.bullet.joints.PhysicsJoint;
+import com.jme3.input.KeyInput;
+import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.AnalogListener;
+import com.jme3.input.controls.KeyTrigger;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Matrix3f;
@@ -14,6 +18,7 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Sphere;
+import com.jme3.texture.Texture;
 
 /**
  * This is the Main Class of your Game. You should only do initialization here.
@@ -30,7 +35,8 @@ public class Main extends SimpleApplication {
     private final float ud = 5968.31f; // Universal density
     private Node ragDoll = new Node();
     private Node head;
-    private Vector3f upForce = Vector3f.UNIT_Y.mult(75);
+    private Node torso;
+    private Vector3f upForce = Vector3f.UNIT_Y.mult(80);
     private boolean applyForceUp = true;
     private static Sphere sphere;
 
@@ -40,9 +46,6 @@ public class Main extends SimpleApplication {
     }
 
     static {
-        /**
-         * Initialize the cannon ball geometry.
-         */
         sphere = new Sphere(32, 32, 0.5f, true, false);
         sphere.setTextureMode(Sphere.TextureMode.Projected);
     }
@@ -62,6 +65,7 @@ public class Main extends SimpleApplication {
         initGround();
         initBall();
         createRagDoll(ZERO);
+        initKeys();
     }
 
     private void initBall() {
@@ -82,13 +86,15 @@ public class Main extends SimpleApplication {
 
     private void initGround() {
 
-        Box ground = new Box(100, 1, 100);
+        Box ground = new Box(1000, 1, 1000);
         Geometry ground_geom = new Geometry("Box", ground);
 
         ground_geom.setLocalTranslation(Vector3f.UNIT_Y.mult(-1));
 
         Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         mat.setColor("Color", ColorRGBA.Gray);
+        Texture grass = assetManager.loadTexture("Materials/francegrassfull.jpg");
+        mat.setTexture("ColorMap", grass);
         ground_geom.setMaterial(mat);
 
         RigidBodyControl ground_rbc = new RigidBodyControl(0);
@@ -99,44 +105,85 @@ public class Main extends SimpleApplication {
         rootNode.attachChild(ground_geom);
     }
 
+    private void initKeys() {
+        inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_K));
+        inputManager.addMapping("Fly", new KeyTrigger(KeyInput.KEY_U));
+        inputManager.addMapping("Run", new KeyTrigger(KeyInput.KEY_I));
+        inputManager.addMapping("Left", new KeyTrigger(KeyInput.KEY_J));
+        inputManager.addMapping("Right", new KeyTrigger(KeyInput.KEY_L));
+        inputManager.addMapping("Back", new KeyTrigger(KeyInput.KEY_M));
+        inputManager.addListener(actionListener, "Jump");
+        inputManager.addListener(analogListener, "Run", "Left", "Right", "Fly", "Back");
+
+    }
+
+    private final ActionListener actionListener = new ActionListener() {
+        @Override
+        public void onAction(String name, boolean keyPressed, float tpf) {
+            if (name.equals("Jump") && !keyPressed) {
+                torso.getControl(RigidBodyControl.class).applyImpulse(Vector3f.UNIT_Y.mult(20), ZERO);
+            }
+        }
+    };
+    private final AnalogListener analogListener = new AnalogListener() {
+        @Override
+        public void onAnalog(String name, float value, float tpf) {
+            if (name.equals("Fly")) {
+                torso.getControl(RigidBodyControl.class).applyCentralForce(Vector3f.UNIT_Y.mult(30));
+            }
+            if (name.equals("Run")) {
+                torso.getControl(RigidBodyControl.class).applyCentralForce(Vector3f.UNIT_Z.mult(-10f));
+            }
+            if (name.equals("Right")) {
+                torso.getControl(RigidBodyControl.class).applyCentralForce(Vector3f.UNIT_X.mult(10));
+            }
+            if (name.equals("Left")) {
+                torso.getControl(RigidBodyControl.class).applyCentralForce(Vector3f.UNIT_X.mult(-10));
+            }
+            if (name.equals("Back")) {
+                torso.getControl(RigidBodyControl.class).applyCentralForce(Vector3f.UNIT_Z.mult(10));
+            }
+        }
+    };
+
     private void createRagDoll(Vector3f location) {
 
         head = createLimb(0.1f, 0.1f, 0.015f, Vector3f.UNIT_Y.mult(1.7f).add(location));
-        Node torso = createLimb(0.125f, 0.2f, 0.015f, Vector3f.UNIT_Y.mult(1.3f).add(location));
+        torso = createLimb(0.125f, 0.2f, 0.015f, Vector3f.UNIT_Y.mult(1.3f).add(location));
         Node hips = createLimb(0.125f, 0.05f, 0.015f, Vector3f.UNIT_Y.mult(0.95f).add(location));
 
-        Node uArmL = createLimb(0.015f, 0.1f, 0.05f, Vector3f.UNIT_Y.mult(1.4f).add(Vector3f.UNIT_X.mult(-0.24f)).add(location));
-        Node uArmR = createLimb(0.015f, 0.1f, 0.05f, Vector3f.UNIT_Y.mult(1.4f).add(Vector3f.UNIT_X.mult(0.24f)).add(location));
-        Node lArmL = createLimb(0.015f, 0.15f, 0.05f, Vector3f.UNIT_Y.mult(1.05f).add(Vector3f.UNIT_X.mult(-0.24f)).add(location));
-        Node lArmR = createLimb(0.015f, 0.15f, 0.05f, Vector3f.UNIT_Y.mult(1.05f).add(Vector3f.UNIT_X.mult(0.24f)).add(location));
+        Node uArmL = createLimb(0.015f, 0.1f, 0.05f, new Vector3f(-0.24f, 1.4f, 0).add(location));
+        Node uArmR = createLimb(0.015f, 0.1f, 0.05f, new Vector3f(0.24f, 1.4f, 0).add(location));
+        Node lArmL = createLimb(0.015f, 0.15f, 0.05f, new Vector3f(-0.24f, 1.05f, 0).add(location));
+        Node lArmR = createLimb(0.015f, 0.15f, 0.05f, new Vector3f(0.24f, 1.05f, 0).add(location));
 
-        Node uLegL = createLimb(0.05f, 0.15f, 0.015f, Vector3f.UNIT_Y.mult(0.65f).add(Vector3f.UNIT_X.mult(-0.075f)).add(location));
-        Node uLegR = createLimb(0.05f, 0.15f, 0.015f, Vector3f.UNIT_Y.mult(0.65f).add(Vector3f.UNIT_X.mult(0.075f)).add(location));
-        Node lLegL = createLimb(0.05f, 0.2f, 0.015f, Vector3f.UNIT_Y.mult(0.2f).add(Vector3f.UNIT_X.mult(-0.075f)).add(location));
-        Node lLegR = createLimb(0.05f, 0.2f, 0.015f, Vector3f.UNIT_Y.mult(0.2f).add(Vector3f.UNIT_X.mult(0.075f)).add(location));
+        Node uLegL = createLimb(0.05f, 0.15f, 0.015f, new Vector3f(-0.075f, 0.65f, 0).add(location));
+        Node uLegR = createLimb(0.05f, 0.15f, 0.015f, new Vector3f(0.075f, 0.65f, 0).add(location));
+        Node lLegL = createLimb(0.05f, 0.2f, 0.015f, new Vector3f(-0.075f, 0.2f, 0).add(location));
+        Node lLegR = createLimb(0.05f, 0.2f, 0.015f, new Vector3f(0.075f, 0.65f, 0).add(location));
 
-        link(2f, head, torso, new Vector3f(-0.05f, -0.2f, 0), new Vector3f(-0.05f, 0.2f, 0), true);
-        link(2f, head, torso, new Vector3f(0.05f, -0.2f, 0), new Vector3f(0.05f, 0.2f, 0), true);
-        link(2f, torso, hips, new Vector3f(-0.1f, -0.2f, 0), new Vector3f(-0.1f, 0.15f, 0), true);
-        link(2f, torso, hips, new Vector3f(0.1f, -0.2f, 0), new Vector3f(0.1f, 0.15f, 0), true);
+        link(2f, head, torso, new Vector3f(-0.05f, -0.2f, 0), new Vector3f(-0.05f, 0.2f, 0));
+        link(2f, head, torso, new Vector3f(0.05f, -0.2f, 0), new Vector3f(0.05f, 0.2f, 0));
+        link(2f, torso, hips, new Vector3f(-0.1f, -0.2f, 0), new Vector3f(-0.1f, 0.15f, 0));
+        link(2f, torso, hips, new Vector3f(0.1f, -0.2f, 0), new Vector3f(0.1f, 0.15f, 0));
 
-        link(2f, uArmL, torso, new Vector3f(0.115f, 0.1f, -0.05f), new Vector3f(-0.125f, 0.185f, -0.05f), false);
-        link(2f, uArmL, torso, new Vector3f(0.115f, 0.1f, 0.05f), new Vector3f(-0.125f, 0.185f, 0.05f), false);
-        link(2f, uArmR, torso, new Vector3f(-0.115f, 0.1f, -0.05f), new Vector3f(0.125f, 0.185f, -0.05f), false);
-        link(2f, uArmR, torso, new Vector3f(-0.115f, 0.1f, 0.05f), new Vector3f(0.125f, 0.185f, 0.05f), false);
-        link(2f, lArmL, uArmL, new Vector3f(0, 0.25f, 0.05f), new Vector3f(0, -0.1f, 0.05f), true);
-        link(2f, lArmL, uArmL, new Vector3f(0, 0.25f, -0.05f), new Vector3f(0, -0.1f, -0.05f), true);
-        link(2f, lArmR, uArmR, new Vector3f(0, 0.25f, 0.05f), new Vector3f(0, -0.1f, 0.05f), true);
-        link(2f, lArmR, uArmR, new Vector3f(0, 0.25f, -0.05f), new Vector3f(0, -0.1f, -0.05f), true);
+        link(2f, uArmL, torso, new Vector3f(0.115f, 0.1f, -0.05f), new Vector3f(-0.125f, 0.185f, -0.05f));
+        link(2f, uArmL, torso, new Vector3f(0.115f, 0.1f, 0.05f), new Vector3f(-0.125f, 0.185f, 0.05f));
+        link(2f, uArmR, torso, new Vector3f(-0.115f, 0.1f, -0.05f), new Vector3f(0.125f, 0.185f, -0.05f));
+        link(2f, uArmR, torso, new Vector3f(-0.115f, 0.1f, 0.05f), new Vector3f(0.125f, 0.185f, 0.05f));
+        link(2f, lArmL, uArmL, new Vector3f(0, 0.25f, 0.05f), new Vector3f(0, -0.1f, 0.05f));
+        link(2f, lArmL, uArmL, new Vector3f(0, 0.25f, -0.05f), new Vector3f(0, -0.1f, -0.05f));
+        link(2f, lArmR, uArmR, new Vector3f(0, 0.25f, 0.05f), new Vector3f(0, -0.1f, 0.05f));
+        link(2f, lArmR, uArmR, new Vector3f(0, 0.25f, -0.05f), new Vector3f(0, -0.1f, -0.05f));
 
-        link(2f, hips, uLegL, new Vector3f(-0.175f, -0.05f, 0), new Vector3f(-0.05f, 0.25f, 0), true);
-        link(2f, hips, uLegL, new Vector3f(-0.075f, -0.05f, 0), new Vector3f(0.05f, 0.25f, 0), true);
-        link(2f, hips, uLegR, new Vector3f(0.175f, -0.05f, 0), new Vector3f(0.05f, 0.25f, 0), true);
-        link(2f, hips, uLegR, new Vector3f(0.075f, -0.05f, 0), new Vector3f(-0.05f, 0.25f, 0), true);
-        link(2f, uLegL, lLegL, new Vector3f(-0.05f, -0.25f, 0), new Vector3f(-0.05f, 0.3f, 0), true);
-        link(2f, uLegL, lLegL, new Vector3f(0.05f, -0.25f, 0), new Vector3f(0.05f, 0.3f, 0), true);
-        link(2f, uLegR, lLegR, new Vector3f(-0.05f, -0.25f, 0), new Vector3f(-0.05f, 0.3f, 0), true);
-        link(2f, uLegR, lLegR, new Vector3f(0.05f, -0.25f, 0), new Vector3f(0.05f, 0.3f, 0), true);
+        link(2f, hips, uLegL, new Vector3f(-0.175f, -0.05f, 0), new Vector3f(-0.05f, 0.25f, 0));
+        link(2f, hips, uLegL, new Vector3f(-0.075f, -0.05f, 0), new Vector3f(0.05f, 0.25f, 0));
+        link(2f, hips, uLegR, new Vector3f(0.175f, -0.05f, 0), new Vector3f(0.05f, 0.25f, 0));
+        link(2f, hips, uLegR, new Vector3f(0.075f, -0.05f, 0), new Vector3f(-0.05f, 0.25f, 0));
+        link(2f, uLegL, lLegL, new Vector3f(-0.05f, -0.25f, 0), new Vector3f(-0.05f, 0.3f, 0));
+        link(2f, uLegL, lLegL, new Vector3f(0.05f, -0.25f, 0), new Vector3f(0.05f, 0.3f, 0));
+        link(2f, uLegR, lLegR, new Vector3f(-0.05f, -0.25f, 0), new Vector3f(-0.05f, 0.3f, 0));
+        link(2f, uLegR, lLegR, new Vector3f(0.05f, -0.25f, 0), new Vector3f(0.05f, 0.3f, 0));
 
         ragDoll.attachChild(head);
         ragDoll.attachChild(torso);
@@ -179,21 +226,24 @@ public class Main extends SimpleApplication {
         }
     }
 
-    private PhysicsJoint link(float limit, Node A, Node B, Vector3f pivotA, Vector3f pivotB, boolean vertical) {
+    private PhysicsJoint link(float limit, Node A, Node B, Vector3f pivotA, Vector3f pivotB) {
 
         Link link = new Link(limit, A.getControl(RigidBodyControl.class), B.getControl(RigidBodyControl.class), pivotA, pivotB, Matrix3f.IDENTITY, Matrix3f.IDENTITY, true);
 
-        /**/
-        if (vertical) {/**/
-            link.enableSpring(1, true);
-            link.setStiffness(1, 0.1f);
-            link.setLinearUpperLimit(Vector3f.UNIT_Y.mult(0.01f * limit));
-            /**/
-        } else {
-            link.enableSpring(0, true);
-            link.setStiffness(0, 0.1f);
-            link.setLinearUpperLimit(Vector3f.UNIT_X.mult(0.01f * limit));
-        }/**/
+        final float maximum_stretch_factor = 0.01f;
+        final float stiffness = 0.1f;
+
+        link.enableSpring(0, true);
+        link.setStiffness(0, stiffness);
+        link.setLinearUpperLimit(Vector3f.UNIT_X.mult(maximum_stretch_factor * limit));
+
+        link.enableSpring(1, true);
+        link.setStiffness(1, stiffness);
+        link.setLinearUpperLimit(Vector3f.UNIT_Y.mult(maximum_stretch_factor * limit));
+
+        link.enableSpring(2, true);
+        link.setStiffness(2, stiffness);
+        link.setLinearUpperLimit(Vector3f.UNIT_Z.mult(maximum_stretch_factor * limit));
 
         bulletAppState.getPhysicsSpace().add(link);
 
@@ -210,9 +260,9 @@ public class Main extends SimpleApplication {
             }
         }
 
-        // Keep the ragdoll standing.
+        // Keep the rag doll standing.
         if (applyForceUp) {
-            head.getControl(RigidBodyControl.class).applyForce(upForce, Vector3f.ZERO);
+            head.getControl(RigidBodyControl.class).applyCentralForce(upForce);
         }
     }
 
